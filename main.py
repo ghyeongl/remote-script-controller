@@ -79,24 +79,28 @@ class ReposManager:
 class CmdlineManager:
     class Command:
         def __init__(self, msg):
-            self.content = msg.split(' ')
+            self.content = msg.content.split(' ')
 
     def __init__(self, reposManager):
         self.reposManager = reposManager
         self.command = None
+        self.message = None
 
-    def setCommand(self, message):
+    async def setCommand(self, message):
         self.command = self.Command(message)
-        self._provideCommand()
+        self.message = message
+        await self._provideCommand()
 
-    def _provideCommand(self):
+    async def _provideCommand(self):
         if self.command.content[0] == '$update':
             if self.command.content[1] == 'repository_list':
                 self.reposManager.updateRepos()
+                await self.message.channel.send('All repos are updated.')
 
         if self.command.content[0] == '$stop':
             if self.command.content[1] == 'all_repository':
                 self.reposManager.stopRepos()
+                await self.message.channel.send('All repos are stopped.')
 
 
 def readCsv():
@@ -130,6 +134,7 @@ def writeCsv():
     f = open('data.csv', 'w', encoding='UTF-8', newline='')
     f.close()
 
+
 def main():
     writeCsv()
     print(f'[Script Management] System started: <pid: {os.getpid()}>')
@@ -144,11 +149,10 @@ def main():
     @client.event
     async def on_message(message):
         if message.author.id == 398855441804820480:
-            cmdlineManager.setCommand(message.content)
+            await cmdlineManager.setCommand(message)
 
     client.run(open('token.txt', 'r').read())
 
 
 if __name__ == "__main__":
     main()
-
