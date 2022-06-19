@@ -21,7 +21,7 @@ class Repository:
             parser.appendCsv(self.path, s.pid)
             print(f'[{self.path}] Script started: <pid: {s.pid}>')
             for line in s.stdout:
-                print(line, end='')
+                print(f"[{self.name}] " + line, end='')
         if s.returncode != 0:
             raise CalledProcessError(s.returncode, s.args)
 
@@ -79,10 +79,11 @@ class ReposManager:
         self._startRepos()
 
     def copyRepos(self):
+        before = time.time()
         for repo in self.reposList:
             updater = CodeUpdater(repo.name)
             updater.getFilesList()
-
+        return round(time.time() - before, 3)
 
 
 class CmdlineManager:
@@ -107,7 +108,8 @@ class CmdlineManager:
                 await self.message.channel.send('All repos are updated.')
 
             if self.command.content[1] == 'repository_code':
-                self.reposManager.copyRepos()
+                elapsedTime = self.reposManager.copyRepos()
+                await self.message.channel.send(f'Original code of repos are copied. ({elapsedTime}s)')
 
         if self.command.content[0] == '$stop':
             if self.command.content[1] == 'all_repository':
@@ -193,45 +195,55 @@ class CodeUpdater:
                 if f.startswith("."):
                     self.fileList.remove(file)
                     break
-
-            # .gitignore 에 있는 파일 제거
-            if gitignore and self._detectIgnore(file):
-                self.fileList.remove(file)
+            else:
+                # .gitignore 에 있는 파일 제거
+                if gitignore and self._detectIgnore(file):
+                    self.fileList.remove(file)
 
     def _detectIgnore(self, file) -> bool:
         with open(self.gitignore) as ignores:
             for item in ignores:
+                item = item.replace("\n", "")
+                # 주석일 경우
                 if item.startswith("#"):
                     continue
                 # 디렉토리를 포함할 경우
                 if "/" in item:
                     sepItem = item.rsplit("/", maxsplit=1) #seperatedItem
-                    dirI = sepItem.pop(0).split("*")
-                    # 디렉토리
-                    for i in dirI:
-                        if not i in file: # 만약 파일에 해당 문법이 없으면 다음 아이템으로 진행
-                            break
-                    else:
-                        if len(sepItem) == 0:
-                            return True # 있으면 ignore
-                        conI = sepItem.pop(0).split("*")
-                        for i in conI:
-                            if not i in file:
-                                break
-                        else:
+                    if self._detectDirIgnore(sepItem.pop(0), file):
+                        if len(sepItem) == 0 or sepItem[0] == '':
+                            return True
+                        if self._detectFileIgnore(sepItem[0], file):
                             return True
                 # 디렉토리를 포함하지 않을 경우
                 else:
-                    sepItem = item.split("*")
-                    for i in sepItem:
-                        if not i in file: # 만약 파일에
-                            break
-                    else:
+                    if self._detectFileIgnore(item, file):
                         return True
         return False
 
-    def _testIgnore(self):
-        pass
+    def _detectDirIgnore(self, item, file):
+        if item == '':
+            return False
+        dirI = item.split("*")
+        while '' in dirI:
+            dirI.remove('')
+        for i in dirI:
+            if not (i in file):
+                return False
+        return True
+
+    def _detectFileIgnore(self, item, file):
+        if item == '':
+            return False
+        sepItem = item.split("*")
+        while '' in sepItem:
+            sepItem.remove('')
+        if len(sepItem) == 0:
+            return False
+        for i in sepItem:
+            if not (i in file):
+                return False
+        return True
 
     def pasteFiles(self):
         pass
