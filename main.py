@@ -1,24 +1,21 @@
 import os
-import subprocess
-import time
-import csv
 import discord
-import multiprocessing
-from zipfile import ZipFile
 from management import ReposManager, CmdlineManager, CsvParser
 
 
 def main():
-    parser = CsvParser()
-    parser.writeCsv()
-    print(f'Script Management System started: <pid: {os.getpid()}>')
-    reposManager = ReposManager('Repository')
+    initialize()
+    reposManager = ReposManager()
     cmdlineManager = CmdlineManager(reposManager)
+    discordClient(cmdlineManager)
+
+
+def discordClient(cmdlineManager):
     client = discord.Client()
 
     @client.event
     async def on_ready():
-        print('We have logged in as {0.user}'.format(client))
+        print(f'We have logged in as {client.user}')
 
     @client.event
     async def on_message(message):
@@ -26,6 +23,12 @@ def main():
             await cmdlineManager.setCommand(message)
 
     client.run(open('token.txt', 'r').read())
+
+
+def initialize():
+    parser = CsvParser()
+    parser.writeCsv()
+    print(f'Script Management System started: (pid: {os.getpid()})')
 
 
 if __name__ == "__main__":

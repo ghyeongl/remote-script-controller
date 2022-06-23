@@ -1,10 +1,22 @@
 import time
+import os
+from .repository import Repository
+from .codeUpdater import CodeUpdater
+from .repoInfo import RepoInfo
 
 
 class ReposManager:
-    def __init__(self, space):
+    def __init__(self, space='Repository'):
         self.reposList = []
         self.workspace = space
+        self.initRepos()
+
+    def initRepos(self):
+        self._getRepos()
+        self._startRepos()
+
+    def updateRepos(self):
+        self.stopRepos()
         self._getRepos()
         self._startRepos()
 
@@ -12,8 +24,12 @@ class ReposManager:
         dirList = os.listdir(self.workspace)
         for dirName in dirList:
             path = f"{self.workspace}/{dirName}"
+            if dirName.startswith("."):
+                continue
             if os.path.isdir(path) and 'main.py' in os.listdir(path):
-                repo = Repository(self.workspace, dirName)
+                repoInfo = RepoInfo(self.workspace, dirName)
+                # TODO: add profile parser and save it
+                repo = Repository(repoInfo)
                 self.reposList.append(repo)
 
     def _startRepos(self):
@@ -25,14 +41,9 @@ class ReposManager:
             repo.stopProcess()
             self.reposList.remove(repo)
 
-    def updateRepos(self):
-        self.stopRepos()
-        self._getRepos()
-        self._startRepos()
-
     def copyRepos(self):
         before = time.time()
         for repo in self.reposList:
-            updater = CodeUpdater(repo.name)
+            updater = CodeUpdater(repo.info)
             updater.getFilesList()
         return round(time.time() - before, 3)

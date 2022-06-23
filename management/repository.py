@@ -1,13 +1,13 @@
 import time
 import subprocess
 import multiprocessing
-from csvParser import CsvParser
+from .csvParser import CsvParser
+from .repoInfo import RepoInfo
 
 
 class Repository:
-    def __init__(self, workspace, dirName, parser):
-        self.path = f"{workspace}/{dirName}"
-        self.name = dirName
+    def __init__(self, repoInfo: RepoInfo):
+        self.info = repoInfo
         self.p = None
         self.lock = False
         self.parser = CsvParser()
@@ -15,33 +15,33 @@ class Repository:
     def startScript(self):
         command = ['python3', 'main.py']
         from subprocess import Popen, PIPE, STDOUT, CalledProcessError
-        with Popen(command, cwd=self.path, stdout=PIPE, stderr=STDOUT, text=True) as s:
-            self.parser.appendCsv(self.path, s.pid)
-            print(f'[{self.path}] Script started: <pid: {s.pid}>')
+        with Popen(command, cwd=self.info.path, stdout=PIPE, stderr=STDOUT, text=True) as s:
+            self.parser.appendCsv(self.info.path, s.pid)
+            print(f'[{self.info.path}] Script started: (pid: {s.pid})')
             for line in s.stdout:
-                print(f"[{self.name}] " + line, end='')
+                print(f"[{self.info.name}] " + line, end='')
         if s.returncode != 0:
             raise CalledProcessError(s.returncode, s.args)
 
     def stopScript(self):
         data = self.parser.readCsv()
         for line in data:
-            if line[0] == self.path:
+            if line[0] == self.info.path:
                 subprocess.run(['kill', '-9', str(line[1])], capture_output=True)
-                print(f'[{self.path}] Script terminated: <pid: {line[1]}>')
+                print(f'[{self.info.path}] Script terminated: (pid: {line[1]})')
 
     def startProcess(self):
         if self.lock:
-            print(f'[{self.path}] ProcessAlreadyLocked: {self.p}')
+            print(f'[{self.info.path}] ProcessAlreadyLocked: {self.p}')
             return
         self.p = multiprocessing.Process(target=self.startScript, args=())
         self.p.start()
         self.lock = True
-        print(f'[{self.path}] Process started: {self.p}')
+        print(f'[{self.info.path}] Process started: {self.p}')
 
     def stopProcess(self):
         self.stopScript()
         self.p.kill()
         time.sleep(1)
         self.lock = False
-        print(f'[{self.path}] Process killed: {self.p}')
+        print(f'[{self.info.path}] Process killed: {self.p}')
