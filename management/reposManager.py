@@ -13,12 +13,12 @@ class ReposManager:
 
     def initRepos(self):
         self._getRepos()
-        self._startRepos()
+        self.startRepos()
 
     def updateRepos(self):
         self.stopRepos()
         self._getRepos()
-        self._startRepos()
+        self.startRepos()
 
     def _getRepos(self):
         dirList = os.listdir(self.workspace)
@@ -28,11 +28,12 @@ class ReposManager:
                 continue
             if os.path.isdir(path) and 'main.py' in os.listdir(path):
                 repoInfo = RepoInfo(self.workspace, dirName)
+                repoInfo.originWorkspace = '/Users/ghyeong/Spaces/Work/Devs/Lang-Python'
                 # TODO: add profile parser and save it
                 repo = Repository(repoInfo)
                 self.reposList.append(repo)
 
-    def _startRepos(self):
+    def startRepos(self):
         for repo in self.reposList:
             repo.startProcess()
 
@@ -45,5 +46,5 @@ class ReposManager:
         before = time.time()
         for repo in self.reposList:
             updater = CodeUpdater(repo.info)
-            updater.getFilesList()
+            updater.do()
         return round(time.time() - before, 3)

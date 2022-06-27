@@ -1,30 +1,52 @@
 import os
+import shutil
+from datetime import datetime
 from zipfile import ZipFile
 from .repoInfo import RepoInfo
+from management import AbsolutePath
 
 
 class CodeUpdater:
     def __init__(self, repoInfo: RepoInfo):
         self.info = repoInfo
 
+    def do(self):
+        self.getFilesList()
+        self.updateRepository()
+
     def getFilesList(self):
-        self.info.fileList = self.scanFiles(self.info.name)
-        print(self.info.fileList)
+        self.info.fileList = self.scanFiles(self.info.originWorkspace, self.info.name)
         self._ignoreFiles()
+        self._addFiles(self.info.originWorkspace)
 
-    def copyFiles(self):
-        with ZipFile('sample2.zip', 'w') as zipObj2:
-            for folderName, subFolders, filenames in os.walk(self.info.path):
-                for filename in filenames:
-                    filePath = os.path.join(folderName, filename)
-                    zipObj2.write(filePath, os.path.basename(filePath))
+    def updateRepository(self):
+        savePath = self.zipFiles(self.info.originWorkspace, AbsolutePath.Temp)
+        archPath = self.zipFiles(self.info.aRepoPath, AbsolutePath.Archive)
+        self.info.archPath.append(archPath)
 
-    def scanFiles(self, folders):
+        shutil.rmtree(self.info.aRepoPath)
+        self.unzipFiles(savePath, AbsolutePath.Repository)
+
+    def zipFiles(self, fromSpace, toSpace):
+        curTime = datetime.now()
+        filename = f"{self.info.name}_{curTime.strftime('%y%m%d_%H%M%S')}.zip"
+        os.chdir(toSpace)
+        with ZipFile(filename, 'x') as zipObj:
+            os.chdir(fromSpace)
+            for file in self.info.fileList:
+                zipObj.write(file)
+        os.chdir(AbsolutePath.curPath)
+        return f"{toSpace}/{filename}"
+
+    def unzipFiles(self, fromWorks, toPath):
+        ZipFile(fromWorks).extractall(toPath)
+
+    def scanFiles(self, where, folders):
         files = []
-        curPath = f"{self.info.workspace}/{folders}"
+        curPath = f"{where}/{folders}"
         for i in os.listdir(f"{curPath}"):
             if os.path.isdir(f"{curPath}/{i}"):
-                for j in self.scanFiles(f"{folders}/{i}"):
+                for j in self.scanFiles(where, f"{folders}/{i}"):
                     files.append(j)
             else:
                 files.append(f"{folders}/{i}")
@@ -44,8 +66,8 @@ class CodeUpdater:
                     self.info.fileList.remove(file)
         print(self.info.fileList)
 
-    def _addFiles(self):
-        files = self.scanFiles(self.info.name)
+    def _addFiles(self, where):
+        files = self.scanFiles(where, self.info.name)
         for file in files:
             if self.info.addSpecial and detectLists(self.info.special, file):
                 if file not in self.info.fileList:
@@ -54,6 +76,8 @@ class CodeUpdater:
 
 
 def detectLists(spec, file):
+    if spec is None:
+        return False
     with open(spec) as ignores:
         for item in ignores:
             item = item.replace("\n", "")
