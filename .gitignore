@@ -215,3 +215,5 @@ token.txt
 Repository/*
 .idea/
 data.csv
+Archive/
+Temp/

@@ -1,12 +1,15 @@
 import os
 import discord
-from management import ReposManager, CmdlineManager, CsvParser
+from management.reposMgmt import ReposMgmt
+from management import CmdlineManager
 
 
 def main():
     initialize()
-    reposManager = ReposManager()
-    cmdlineManager = CmdlineManager(reposManager)
+    reposMgmt = ReposMgmt()
+    reposMgmt.startRepos()
+    # reposManager = ReposManager()
+    cmdlineManager = CmdlineManager(reposMgmt)
     discordClient(cmdlineManager)
 
 
@@ -26,8 +29,6 @@ def discordClient(cmdlineManager):
 
 
 def initialize():
-    parser = CsvParser()
-    parser.writeCsv()
     print(f'Script Management System started: (pid: {os.getpid()})')
 
 
